@@ -7,7 +7,9 @@ from MVP import calculate_mvp
 from Awards import determine_awards
 import json
 
-file_path = 'i:/Cric-legends/player_stats.json'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(BASE_DIR, "player_stats.json")
+
 
 app = Flask(__name__)
 
@@ -94,6 +96,10 @@ def get_stats():
         data = json.load(json_file)
 
     player_data = data.get(player_name, {})
+
+    player_data['economy_rate'] = round((player_data.get("runs_conceded", 0) / player_data.get("overs_bowled", 1)), 2) if player_data.get("overs_bowled", 0) > 0 else None
+    player_data['batting_average'] = round((player_data.get("runs", 0) / (player_data.get("innings_batted", 1) - player_data.get("innings_not_out", 0))), 2) if (player_data.get("innings_batted", 0) - player_data.get("innings_not_out", 0)) > 0 else None
+    player_data['bowling_average'] = round((player_data.get("runs_conceded", 0) / player_data.get("wickets", 1)), 2) if player_data.get("wickets", 0) > 0 else None
     player_data['strike_rate'] = round((player_data.get("runs", 0) / player_data.get("balls_faced", 1)) * 100, 2)
     return jsonify(player_data)
 
