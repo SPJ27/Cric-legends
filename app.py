@@ -1,129 +1,111 @@
 from flask import Flask, request, jsonify
 import os
+import json
 from werkzeug.utils import secure_filename
 
-from Career_rating import calculate_ratings 
+from Career_rating import calculate_ratings
 from Read_scorecard import get_object
 from MVP import calculate_mvp
 from Awards import determine_awards
-import json
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-file_path = os.path.join(BASE_DIR, "player_stats.json")
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+STATS_FILE = os.path.join(BASE_DIR, "player_stats.json")
 
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def update_player_stats(prev, p):
+    """Update cumulative career stats for a player"""
+    return {
+        "matches": prev.get("matches", 0) + 1,
+        "innings_batted": prev.get("innings_batted", 0) + (p.balls_faced > 0),
+        "runs": prev.get("runs", 0) + p.runs,
+        "balls_faced": prev.get("balls_faced", 0) + p.balls_faced,
+        "fours": prev.get("fours", 0) + p.fours,
+        "sixes": prev.get("sixes", 0) + p.sixes,
+        "ducks": prev.get("ducks", 0) + (p.runs == 0 and p.balls_faced > 0),
+        "fifties": prev.get("fifties", 0) + (50 <= p.runs < 100),
+        "hundreds": prev.get("hundreds", 0) + (p.runs >= 100),
+        "innings_not_out": prev.get("innings_not_out", 0) + p.not_out,
+        "innings_bowled": prev.get("innings_bowled", 0) + (p.overs_bowled > 0),
+        "wickets": prev.get("wickets", 0) + p.wickets,
+        "overs_bowled": prev.get("overs_bowled", 0) + p.overs_bowled,
+        "maidens": prev.get("maidens", 0) + p.maidens,
+        "runs_conceded": prev.get("runs_conceded", 0) + p.runs_conceded,
+        "catches": prev.get("catches", 0) + p.catches,
+        "run_outs": prev.get("run_outs", 0) + p.run_outs,
+    }
+
 
 @app.route("/analyze", methods=["POST"])
 def analyze_match():
-    if "file" not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+    if "files" not in request.files:
+        return jsonify({"error": "No files uploaded"}), 400
 
-    file = request.files["file"]
-    if not file.filename.endswith(".pdf"):
-        return jsonify({"error": "Only PDF files allowed"}), 400
+    files = request.files.getlist("files")
+    matches_list = {}
+    with open(STATS_FILE, "r") as f:
+        career_data = json.load(f)
 
-    filename = secure_filename(file.filename)
-    path = os.path.join(UPLOAD_FOLDER, filename)
-    file.save(path)
-    # Save player stats to JSON
-    with open(file_path, 'r') as json_file:
-        data = json.load(json_file)
+    for i, file in enumerate(files):
+        if not file.filename.lower().endswith(".pdf"):
+            continue
 
-    players = get_object(path)
+        filename = secure_filename(file.filename)
+        path = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(path)
 
-    response = []
-    for p in players:
-        player_class = data.get(p.name.lower(), {})
-        data[p.name.lower()] = {
-            "matches": player_class.get("matches", 0) + 1,
-            "innings_batted": player_class.get("innings_batted", 0) + (1 if p.balls_faced > 0 else 0),
-            "runs": player_class.get("runs", 0) + p.runs,
-            "balls_faced": player_class.get("balls_faced", 0) + p.balls_faced,
-            "fours": player_class.get("fours", 0) + p.fours,
-            "sixes": player_class.get("sixes", 0) + p.sixes,
-            "ducks": player_class.get("ducks", 0) + (1 if p.runs == 0 and p.balls_faced > 0 else 0),
-            "fifties": player_class.get("fifties", 0) + (1 if 50 <= p.runs < 100 else 0),
-            "hundreds": player_class.get("hundreds", 0) + (1 if p.runs >= 100 else 0),
-            "innings_not_out": player_class.get("not_out", 0) + (1 if p.not_out else 0),
-            "innings_bowled": player_class.get("innings_bowled", 0) + (1 if p.overs_bowled > 0 else 0),
-            "wickets": player_class.get("wickets", 0) + p.wickets,
-            "overs_bowled": player_class.get("overs_bowled", 0) + p.overs_bowled,
-            "maidens": player_class.get("maidens", 0) + p.maidens,
-            "runs_conceded": player_class.get("runs_conceded", 0) + p.runs_conceded,
-            "catches": player_class.get("catches", 0) + p.catches,
-            "run_outs": player_class.get("run_outs", 0) + p.run_outs,
-        }
-        with open(file_path, 'w') as json_file:
-            json.dump(data, json_file, indent=4)
+        match_name, players = get_object(path)
+        unique_match_name = match_name + f"_{i}" if match_name in matches_list else match_name
+        matches_list[unique_match_name] = []
+        for p in players:
+            key = p.name.lower()
+            prev_stats = career_data.get(key, {})
+            career_data[key] = update_player_stats(prev_stats, p)
+            matches_list[unique_match_name].append({"name": p.name, "mvp_score": calculate_mvp(p), "awards": determine_awards(p)})
+        matches_list[unique_match_name].sort(
+        key=lambda x: x["mvp_score"],
+        reverse=True
+    )
+    with open(STATS_FILE, "w") as f:
+        json.dump(career_data, f, indent=4)
 
-        response.append({
-            "name": p.name,
-            "mvp_score": calculate_mvp(p),
-            "awards": determine_awards(p),
-            "stats": {
-                "runs": p.runs,
-                "balls": p.balls_faced,
-                "fours": p.fours,
-                "sixes": p.sixes,
-                "not_out": p.not_out,
-                "wickets": p.wickets,
-                "overs": p.overs_bowled,
-                "runs_conceded": p.runs_conceded,
-                "catches": p.catches,
-                "run_outs": p.run_outs
-            }
-        })
-    
-
-
-    
-    # Sort MVP leaderboard
-    response.sort(key=lambda x: x["mvp_score"], reverse=True)
-
-    return jsonify({
-        "mvp": response[0] if response else None,
-        "leaderboard": response
-    })
+    return jsonify(matches_list)
 
 
 @app.route("/get_stats", methods=["GET"])
 def get_stats():
     player_name = request.args.get("player_name", "").lower()
-    with open(file_path, 'r') as json_file:
-        data = json.load(json_file)
 
-    player_data = data.get(player_name, {})
+    with open(STATS_FILE, "r") as f:
+        data = json.load(f)
 
-    # Safely compute stats
-    innings_batted = player_data.get("innings_batted", 0)
-    not_outs = player_data.get("innings_not_out", 0)
-    balls_faced = player_data.get("balls_faced", 0)
-    overs_bowled = player_data.get("overs_bowled", 0)
-    runs_conceded = player_data.get("runs_conceded", 0)
-    wickets = player_data.get("wickets", 0)
-    runs = player_data.get("runs", 0)
+    stats = data.get(player_name, {})
 
-    # Batting average
-    outs = innings_batted - not_outs
-    player_data['batting_average'] = round(runs / outs, 2) if outs > 0 else None
+    innings = stats.get("innings_batted", 0)
+    not_outs = stats.get("innings_not_out", 0)
+    balls = stats.get("balls_faced", 0)
+    runs = stats.get("runs", 0)
+    overs = stats.get("overs_bowled", 0)
+    conceded = stats.get("runs_conceded", 0)
+    wickets = stats.get("wickets", 0)
 
-    # Strike rate
-    player_data['strike_rate'] = round((runs / balls_faced) * 100, 2) if balls_faced > 0 else None
+    outs = innings - not_outs
 
-    # Economy rate
-    player_data['economy_rate'] = round(runs_conceded / overs_bowled, 2) if overs_bowled > 0 else None
+    stats.update({
+        "batting_average": round(runs / outs, 2) if outs > 0 else None,
+        "strike_rate": round((runs / balls) * 100, 2) if balls > 0 else None,
+        "economy_rate": round(conceded / overs, 2) if overs > 0 else None,
+        "bowling_average": round(conceded / wickets, 2) if wickets > 0 else None,
+        "career_rating": calculate_ratings(type("Stats", (), stats)())
+    })
 
-    # Bowling average
-    player_data['bowling_average'] = round(runs_conceded / wickets, 2) if wickets > 0 else None
+    return jsonify(stats)
 
-    # Career rating
-    player_data['career_rating'] = calculate_ratings(type('Stats', (object,), player_data)())
-
-    return jsonify(player_data)
 
 if __name__ == "__main__":
     app.run(debug=True)

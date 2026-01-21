@@ -37,7 +37,7 @@ def calculate_mvp(stats):
 
     bowling_points += wickets * 25
     bowling_points += maidens * 10
-    if economy_rate is not None:
+    if economy_rate != None and economy_rate > 0:
         if economy_rate <= 8:
             bowling_points += 120 / economy_rate       
         elif economy_rate <= 10:

@@ -64,7 +64,7 @@ def determine_awards(player_stats):
     
     # All-Rounder Awards
 
-    if (player_stats.runs >= 60 and strike_rate >= 275) or (player_stats.wickets >= 3 and player_stats.overs_bowled > 0 and (player_stats.runs_conceded / player_stats.overs_bowled) < 10):
+    if (player_stats.runs >= 60 and strike_rate >= 275) or (player_stats.wickets >= 2 and player_stats.overs_bowled > 0 and (player_stats.runs_conceded / player_stats.overs_bowled) < 10):
         awards.append("Nuclear Weapon")
     
     elif (player_stats.runs >= 40) and (player_stats.wickets >= 1 and player_stats.overs_bowled > 0 and (player_stats.runs_conceded / player_stats.overs_bowled) < 15):

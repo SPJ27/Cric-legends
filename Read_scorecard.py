@@ -32,8 +32,7 @@ def get_object(pdf_path = r"I:\Cric-legends\A_vs_B_1760857941324 (1).pdf"):
                 raw_text += text + "\n"
 
     lines = [line.strip() for line in raw_text.split("\n") if line.strip()]
-
-
+    match_name = lines[0] 
     # ---------------- PARSER ----------------
     def parse_scorecard(lines):
         for line in lines:
@@ -81,4 +80,4 @@ def get_object(pdf_path = r"I:\Cric-legends\A_vs_B_1760857941324 (1).pdf"):
 
 
     # ---------------- OUTPUT ----------------
-    return players.values()
+    return [match_name, players.values()]
