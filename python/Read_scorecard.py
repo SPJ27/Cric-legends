@@ -26,6 +26,7 @@ def get_object(pdf_path = r"I:\Cric-legends\A_vs_B_1760857941324 (1).pdf"):
     raw_text = ""
 
     with pdfplumber.open(pdf_path) as pdf:
+        print(pdf.pages[0].extract_text())
         for page in pdf.pages:
             text = page.extract_text()
             if text:
@@ -81,3 +82,5 @@ def get_object(pdf_path = r"I:\Cric-legends\A_vs_B_1760857941324 (1).pdf"):
 
     # ---------------- OUTPUT ----------------
     return [match_name, players.values()]
+
+print(get_object())
