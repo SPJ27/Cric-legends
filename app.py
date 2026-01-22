@@ -39,6 +39,11 @@ def update_player_stats(prev, p):
         "catches": prev.get("catches", 0) + p.catches,
         "run_outs": prev.get("run_outs", 0) + p.run_outs,
     }
+from flask import render_template
+
+@app.route("/")
+def home():
+    return render_template("index.html")
 
 
 @app.route("/analyze", methods=["POST"])

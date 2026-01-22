@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cricket Match Analyzer</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<h1>Cricket Match Analyzer</h1>
+
+<!-- Upload Section -->
+<div class="card">
+    <h2>Upload Match Scorecards</h2>
+    <input type="file" id="files" multiple accept=".pdf">
+    <button onclick="uploadMatches()">Analyze Matches</button>
+    <pre id="matchResult"></pre>
+</div>
+
+<!-- Stats Section -->
+<div class="card">
+    <h2>Get Player Career Stats</h2>
+    <input type="text" id="playerName" placeholder="Enter player name">
+    <button onclick="getStats()">Get Stats</button>
+    <pre id="statsResult"></pre>
+</div>
+
+<script>
+function createTable(headers, rows) {
+    let table = `<table>
+        <thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>
+        <tbody>
+    `;
+    for (const row of rows) {
+        table += `<tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`;
+    }
+    table += "</tbody></table>";
+    return table;
+}
+
+async function uploadMatches() {
+    const filesInput = document.getElementById("files");
+    const resultBox = document.getElementById("matchResult");
+
+    if (filesInput.files.length === 0) {
+        alert("Please select at least one PDF");
+        return;
+    }
+
+    const formData = new FormData();
+    for (const file of filesInput.files) {
+        formData.append("files", file);
+    }
+
+    resultBox.innerHTML = "Analyzing matches...";
+
+    const res = await fetch("/analyze", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await res.json();
+    resultBox.innerHTML = "";
+
+    for (const match in data) {
+        const rows = data[match].map((p, i) => [
+            i + 1,
+            p.name,
+            p.mvp_score.toFixed(2),
+            p.awards.join(", ") || "-"
+        ]);
+
+        resultBox.innerHTML += `
+            <h3>${match}</h3>
+            ${createTable(
+                ["Rank", "Player", "MVP Score", "Awards"],
+                rows
+            )}
+        `;
+    }
+}
+
+async function getStats() {
+    const player = document.getElementById("playerName").value.trim();
+    const resultBox = document.getElementById("statsResult");
+
+    if (!player) {
+        alert("Enter a player name");
+        return;
+    }
+
+    resultBox.innerHTML = "Fetching stats...";
+
+    const res = await fetch(`/get_stats?player_name=${player}`);
+    const data = await res.json();
+
+    const rows = Object.entries(data).map(
+        ([key, value]) => [key.replaceAll("_", " "), value ?? "-"]
+    );
+
+    resultBox.innerHTML = createTable(
+        ["Stat", "Value"],
+        rows
+    );
+}
+</script>
+
+
+</body>
+</html>

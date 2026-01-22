@@ -3,7 +3,7 @@ import re
 from Player_stats import Stats
 
 # ---------------- CONFIG ----------------
-def get_object(pdf_path = r"I:\Cric-legends\A_vs_B_1760857941324 (1).pdf"):
+def get_object(pdf_path = r"I:\Cric-legends\python\A_vs_B_1760857941324 (1).pdf"):
 
     BATSMAN_RE = re.compile(
         r"^([A-Za-z0-9]+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([\d.]+)$"
