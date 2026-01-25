@@ -1,6 +1,6 @@
 def calculate_ratings(stats):
     outs = stats.innings_batted - stats.innings_not_out
-    average = round(stats.runs / outs, 2) if outs > 0 else 100
+    average = round(stats.runs / outs, 2) if outs > 0 else stats. runs
     strike_rate = round((stats.runs / stats.balls_faced) * 100, 2) if stats.balls_faced > 0 else None
     economy_rate = round((stats.runs_conceded / stats.overs_bowled), 2) if stats.overs_bowled > 0 else None
     batting_score = 0
